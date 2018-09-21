@@ -3,7 +3,7 @@
 
 ## 准备 ##
 安装python-opencv、dlib
-下载dlib人脸形状检测器模型数据：shape_predictor_68_face_landmarks.dat.bz2(http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2)，并解压在models文件夹下
+下载dlib人脸形状检测器模型数据：[shape_predictor_68_face_landmarks.dat.bz2](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2)，并解压在models文件夹下
 
 ## 实现步骤 ##
 	1. 使用dlib的shape_predictor_68_face_landmarks.dat模型获取人脸图片im1和摄像头图片im2的68个人脸特征点。

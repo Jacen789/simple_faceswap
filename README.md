@@ -1,8 +1,8 @@
 # simple_faceswap
-使用python-opencv和dlib实现的简单换脸程序
+使用opencv-python和dlib实现的简单换脸程序
 
 ## 准备 ##
-* 安装python-opencv、dlib
+* 安装opencv-python、dlib
 * 下载dlib人脸形状检测器模型数据：[shape_predictor_68_face_landmarks.dat.bz2](http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2)，并解压在models文件夹下
 
 ## 实现步骤 ##

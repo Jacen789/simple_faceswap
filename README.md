@@ -15,8 +15,10 @@
 
 ## 换脸效果 ##
 * 周杰伦的帅气照：
-![zjl.jpeg](faces/JayChou.jpeg)
+
+![JayChou.png](./faces/JayChou.png)
 
 * 利用杰伦的脸作为替换的脸的换脸效果：
+
 ![seamless_im.png](./faces/seamless_im.png)
 

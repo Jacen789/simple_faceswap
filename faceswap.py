@@ -10,7 +10,7 @@ here = os.path.dirname(os.path.abspath(__file__))
 models_folder_path = os.path.join(here, 'models')  # 模型保存文件夹
 faces_folder_path = os.path.join(here, 'faces')  # 人脸图片保存文件夹
 predictor_path = os.path.join(models_folder_path, 'shape_predictor_68_face_landmarks.dat')  # 模型路径
-image_face_path = os.path.join(faces_folder_path, 'JayChou.jpeg')  # 人脸图片路径
+image_face_path = os.path.join(faces_folder_path, 'JayChou.png')  # 人脸图片路径
 
 detector = dlib.get_frontal_face_detector()  # dlib的正向人脸检测器
 predictor = dlib.shape_predictor(predictor_path)  # dlib的人脸形状检测器

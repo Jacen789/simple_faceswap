@@ -38,7 +38,7 @@ def get_face_landmarks(image, face_detector, shape_predictor):
     num_faces = len(dets)
     if num_faces == 0:
         print("Sorry, there were no faces found.")
-        exit()
+        return None
     shape = shape_predictor(image, dets[0])
     face_landmarks = np.array([[p.x, p.y] for p in shape.parts()])
     return face_landmarks
@@ -99,15 +99,41 @@ def get_mask_union(mask1, mask2):
     :return: 两个掩模掩盖部分的并集
     """
     mask = np.min([mask1, mask2], axis=0)  # 掩盖部分并集
-    mask = ((cv2.blur(mask, (3, 3)) == 255) * 255).astype(np.uint8)  # 缩小掩模大小
-    mask = cv2.blur(mask, (5, 5)).astype(np.uint8)  # 模糊掩模
+    mask = ((cv2.blur(mask, (5, 5)) == 255) * 255).astype(np.uint8)  # 缩小掩模大小
+    mask = cv2.blur(mask, (3, 3)).astype(np.uint8)  # 模糊掩模
     return mask
+
+
+def skin_color_adjustment(im1, im2, mask=None):
+    """
+    肤色调整
+    :param im1: 图片1
+    :param im2: 图片2
+    :param mask: 人脸 mask. 如果存在，使用人脸部分均值来求肤色变换系数；否则，使用高斯模糊来求肤色变换系数
+    :return: 根据图片2的颜色调整的图片1
+    """
+    if mask is None:
+        im1_ksize = 55
+        im2_ksize = 55
+        im1_factor = cv2.GaussianBlur(im1, (im1_ksize, im1_ksize), 0).astype(np.float)
+        im2_factor = cv2.GaussianBlur(im2, (im2_ksize, im2_ksize), 0).astype(np.float)
+    else:
+        im1_face_image = cv2.bitwise_and(im1, im1, mask=mask)
+        im2_face_image = cv2.bitwise_and(im2, im2, mask=mask)
+        im1_factor = np.mean(im1_face_image, axis=(0, 1))
+        im2_factor = np.mean(im2_face_image, axis=(0, 1))
+
+    im1 = np.clip((im1.astype(np.float) * im2_factor / np.clip(im1_factor, 1e-6, None)), 0, 255).astype(np.uint8)
+    return im1
 
 
 def main():
     im1 = cv2.imread(image_face_path)  # face_image
     im1 = cv2.resize(im1, (600, im1.shape[0] * 600 // im1.shape[1]))
     landmarks1 = get_face_landmarks(im1, detector, predictor)  # 68_face_landmarks
+    if landmarks1 is None:
+        print('{}:检测不到人脸'.format(image_face_path))
+        exit(1)
     im1_size = get_image_size(im1)  # 脸图大小
     im1_mask = get_face_mask(im1_size, landmarks1)  # 脸图人脸掩模
 
@@ -115,23 +141,30 @@ def main():
     while True:
         ret_val, im2 = cam.read()  # camera_image
         landmarks2 = get_face_landmarks(im2, detector, predictor)  # 68_face_landmarks
-        im2_size = get_image_size(im2)  # 摄像头图片大小
-        im2_mask = get_face_mask(im2_size, landmarks2)  # 摄像头图片人脸掩模
+        if landmarks2 is not None:
+            im2_size = get_image_size(im2)  # 摄像头图片大小
+            im2_mask = get_face_mask(im2_size, landmarks2)  # 摄像头图片人脸掩模
 
-        affine_im1 = get_affine_image(im1, im2, landmarks1, landmarks2)  # im1（脸图）仿射变换后的图片
-        affine_im1_mask = get_affine_image(im1_mask, im2, landmarks1, landmarks2)  # im1（脸图）仿射变换后的图片的人脸掩模
+            affine_im1 = get_affine_image(im1, im2, landmarks1, landmarks2)  # im1（脸图）仿射变换后的图片
+            affine_im1_mask = get_affine_image(im1_mask, im2, landmarks1, landmarks2)  # im1（脸图）仿射变换后的图片的人脸掩模
 
-        # affine_im1_face_image = cv2.bitwise_and(affine_im1, affine_im1, mask=affine_im1_mask)  # im1（脸图）的脸
-        # im2_face_image = cv2.bitwise_and(im2, im2, mask=im2_mask)  # im2（摄像头图片）的脸
-        # cv2.imshow('affine_im1_face_image', affine_im1_face_image)
-        # cv2.imshow('im2_face_image', im2_face_image)
+            union_mask = get_mask_union(im2_mask, affine_im1_mask)  # 掩模合并
 
-        union_mask = get_mask_union(im2_mask, affine_im1_mask)  # 掩模合并
-        point = get_mask_center_point(affine_im1_mask)  # im1（脸图）仿射变换后的图片的人脸掩模的中心点
-        seamless_im = cv2.seamlessClone(affine_im1, im2, mask=union_mask, p=point, flags=cv2.NORMAL_CLONE)  # 进行泊松融合
+            # affine_im1_face_image = cv2.bitwise_and(affine_im1, affine_im1, mask=union_mask)  # im1（脸图）的脸
+            # im2_face_image = cv2.bitwise_and(im2, im2, mask=union_mask)  # im2（摄像头图片）的脸
+            # cv2.imshow('affine_im1_face_image', affine_im1_face_image)
+            # cv2.imshow('im2_face_image', im2_face_image)
 
-        cv2.imshow('seamless_im', seamless_im)
-        if cv2.waitKey(1) == 27:
+            affine_im1 = skin_color_adjustment(affine_im1, im2, mask=union_mask)  # 肤色调整
+            point = get_mask_center_point(affine_im1_mask)  # im1（脸图）仿射变换后的图片的人脸掩模的中心点
+            seamless_im = cv2.seamlessClone(affine_im1, im2, mask=union_mask, p=point, flags=cv2.NORMAL_CLONE)  # 进行泊松融合
+
+            # cv2.imshow('affine_im1', affine_im1)
+            # cv2.imshow('im2', im2)
+            cv2.imshow('seamless_im', seamless_im)
+        else:
+            cv2.imshow('seamless_im', im2)
+        if cv2.waitKey(1) == 27:  # 按Esc退出
             break
     cv2.destroyAllWindows()
 
